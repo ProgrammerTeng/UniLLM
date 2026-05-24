@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { SiteHeader } from "@/components/SiteHeader";
+import { useI18n } from "@/lib/i18n";
 
 const SDK_LANGUAGES = ["Python", "JavaScript", "Go", "Java", "Ruby", "PHP", "curl"] as const;
 type SdkLanguage = (typeof SDK_LANGUAGES)[number];
@@ -594,38 +596,29 @@ Balance can be topped up by contacting an administrator.`,
   },
 ];
 
+type SectionId = keyof typeof import("@/lib/i18n/messages/en").en.docs.sections;
+
 export default function DocsPage() {
+  const { t } = useI18n();
   const [active, setActive] = useState("quickstart");
   const [sdkLang, setSdkLang] = useState<SdkLanguage>("Python");
 
   const section = SECTIONS.find((s) => s.id === active);
 
+  function sectionLabel(id: string) {
+    return t.docs.sections[id as SectionId] ?? id;
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
-      <header
-        className="border-b px-6 py-3 flex items-center gap-4"
-        style={{ borderColor: "var(--border)" }}
-      >
-        <a href="/dashboard" className="text-lg font-bold hover:opacity-80">
-          UniLLM
-        </a>
-        <span className="text-sm text-[var(--muted)]">API Documentation</span>
-        <div className="flex-1" />
-        <a
-          href="/calculator"
-          className="text-sm hover:opacity-80 transition-opacity"
-          style={{ color: "var(--primary)" }}
-        >
-          Calculator
-        </a>
-        <a
-          href="/dashboard"
-          className="text-sm hover:opacity-80 transition-opacity"
-          style={{ color: "var(--muted)" }}
-        >
-          Dashboard
-        </a>
-      </header>
+      <SiteHeader
+        activeNav="docs"
+        trailing={
+          <span className="text-sm text-[var(--muted)] hidden sm:inline">
+            {t.docs.title}
+          </span>
+        }
+      />
 
       <div className="flex flex-1 max-w-6xl mx-auto w-full">
         {/* Sidebar */}
@@ -643,7 +636,7 @@ export default function DocsPage() {
                 color: active === s.id ? "white" : "var(--muted)",
               }}
             >
-              {s.title}
+              {sectionLabel(s.id)}
             </button>
           ))}
         </nav>
@@ -668,11 +661,12 @@ function SdkSection({
   selectedLang: SdkLanguage;
   onSelectLang: (lang: SdkLanguage) => void;
 }) {
+  const { t } = useI18n();
   const example = SDK_EXAMPLES[selectedLang];
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4 mt-2">SDK Examples</h2>
+      <h2 className="text-xl font-bold mb-4 mt-2">{t.docs.sdkExamples}</h2>
       <p className="text-sm mb-4 leading-relaxed" style={{ color: "var(--muted)" }}>
         UniLLM is compatible with any OpenAI SDK or HTTP client. Select your
         preferred language below.

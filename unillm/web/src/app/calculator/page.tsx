@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isLoggedIn, logout, getModelCatalog } from "@/lib/api";
+import { getModelCatalog } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
+import { SiteHeader } from "@/components/SiteHeader";
 
 interface ModelInfo {
   id: string;
@@ -47,6 +49,7 @@ function formatCost(cost: number): string {
 }
 
 export default function CalculatorPage() {
+  const { t } = useI18n();
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedModelId, setSelectedModelId] = useState<string>("");
@@ -91,80 +94,17 @@ export default function CalculatorPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <header
-        className="border-b px-6 py-3 flex items-center justify-between"
-        style={{ borderColor: "var(--border)" }}
-      >
-        <div className="flex items-center gap-4">
-          <a
-            href="/dashboard"
-            className="text-lg font-bold hover:opacity-80 transition-opacity"
-          >
-            UniLLM
-          </a>
-          <a
-            href="/models"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Models
-          </a>
-          <a
-            href="/playground"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Playground
-          </a>
-          <a
-            href="/docs"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Docs
-          </a>
-          <a href="/calculator" className="text-sm text-white font-medium">
-            Calculator
-          </a>
-        </div>
-        <div className="flex items-center gap-4">
-          {isLoggedIn() ? (
-            <>
-              <a
-                href="/dashboard"
-                className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-              >
-                Dashboard
-              </a>
-              <button
-                onClick={logout}
-                className="text-sm text-[var(--muted)] hover:text-white"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <a
-              href="/login"
-              className="text-sm px-4 py-1.5 rounded-lg font-medium"
-              style={{ background: "var(--primary)", color: "#fff" }}
-            >
-              Sign In
-            </a>
-          )}
-        </div>
-      </header>
+      <SiteHeader activeNav="calculator" />
 
       <div className="max-w-6xl mx-auto p-6">
-        {/* Title */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-1">Cost Calculator</h2>
-          <p className="text-[var(--muted)] text-sm">
-            Estimate your API costs based on expected usage
-          </p>
+          <h2 className="text-2xl font-bold mb-1">{t.calculator.title}</h2>
+          <p className="text-[var(--muted)] text-sm">{t.calculator.subtitle}</p>
         </div>
 
         {loading ? (
           <div className="text-center py-20 text-[var(--muted)]">
-            Loading models...
+            {t.calculator.loading}
           </div>
         ) : (
           <>
@@ -180,7 +120,7 @@ export default function CalculatorPage() {
                 {/* Model selector */}
                 <div>
                   <label className="text-xs text-[var(--muted)] mb-1.5 block">
-                    Model
+                    {t.calculator.selectModel}
                   </label>
                   <select
                     value={selectedModelId}
@@ -203,7 +143,7 @@ export default function CalculatorPage() {
                 {/* Input tokens */}
                 <div>
                   <label className="text-xs text-[var(--muted)] mb-1.5 block">
-                    Input tokens per request
+                    {t.calculator.inputTokensPerRequest}
                   </label>
                   <input
                     type="number"
@@ -224,7 +164,7 @@ export default function CalculatorPage() {
                 {/* Output tokens */}
                 <div>
                   <label className="text-xs text-[var(--muted)] mb-1.5 block">
-                    Output tokens per request
+                    {t.calculator.outputTokensPerRequest}
                   </label>
                   <input
                     type="number"
@@ -245,7 +185,7 @@ export default function CalculatorPage() {
                 {/* Requests per day */}
                 <div>
                   <label className="text-xs text-[var(--muted)] mb-1.5 block">
-                    Requests per day
+                    {t.calculator.requestsPerDay}
                   </label>
                   <input
                     type="number"
@@ -271,7 +211,7 @@ export default function CalculatorPage() {
                   style={{ background: "var(--background)" }}
                 >
                   <div className="text-xs text-[var(--muted)] mb-1">
-                    Cost per Request
+                    {t.calculator.costPerRequest}
                   </div>
                   <div className="text-lg font-mono font-semibold">
                     {formatCost(costPerRequest)}
@@ -282,7 +222,7 @@ export default function CalculatorPage() {
                   style={{ background: "var(--background)" }}
                 >
                   <div className="text-xs text-[var(--muted)] mb-1">
-                    Daily Cost
+                    {t.calculator.dailyCost}
                   </div>
                   <div className="text-lg font-mono font-semibold">
                     {formatCost(dailyCost)}
@@ -293,7 +233,7 @@ export default function CalculatorPage() {
                   style={{ background: "var(--background)" }}
                 >
                   <div className="text-xs text-[var(--muted)] mb-1">
-                    Monthly Cost (30d)
+                    {t.calculator.monthlyCost}
                   </div>
                   <div className="text-lg font-mono font-semibold text-[var(--primary)]">
                     {formatCost(monthlyCost)}
@@ -304,7 +244,7 @@ export default function CalculatorPage() {
                   style={{ background: "var(--background)" }}
                 >
                   <div className="text-xs text-[var(--muted)] mb-1">
-                    Yearly Cost (365d)
+                    {t.calculator.yearlyCost}
                   </div>
                   <div className="text-lg font-mono font-semibold">
                     {formatCost(yearlyCost)}
@@ -323,7 +263,7 @@ export default function CalculatorPage() {
             >
               <div className="px-5 py-4">
                 <h3 className="text-sm font-semibold">
-                  Model Comparison (sorted by cost)
+                  {t.calculator.compareTitle}
                 </h3>
               </div>
               <div className="overflow-x-auto">
@@ -336,22 +276,26 @@ export default function CalculatorPage() {
                         borderBottom: "1px solid var(--border)",
                       }}
                     >
-                      <th className="px-5 py-2.5 font-medium">Model</th>
-                      <th className="px-5 py-2.5 font-medium">Vendor</th>
-                      <th className="px-5 py-2.5 font-medium text-right">
-                        Input $/1M
+                      <th className="px-5 py-2.5 font-medium">
+                        {t.calculator.colModel}
+                      </th>
+                      <th className="px-5 py-2.5 font-medium">
+                        {t.calculator.colVendor}
                       </th>
                       <th className="px-5 py-2.5 font-medium text-right">
-                        Output $/1M
+                        {t.calculator.colInput}
                       </th>
                       <th className="px-5 py-2.5 font-medium text-right">
-                        Cost/Request
+                        {t.calculator.colOutput}
                       </th>
                       <th className="px-5 py-2.5 font-medium text-right">
-                        Daily Cost
+                        {t.calculator.colPerRequest}
                       </th>
                       <th className="px-5 py-2.5 font-medium text-right">
-                        Monthly Cost
+                        {t.calculator.colDaily}
+                      </th>
+                      <th className="px-5 py-2.5 font-medium text-right">
+                        {t.calculator.colMonthly}
                       </th>
                     </tr>
                   </thead>

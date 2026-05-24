@@ -14,6 +14,8 @@ import {
   getProviderKeys,
   addProviderKey,
 } from "@/lib/admin-api";
+import { SiteHeader } from "@/components/SiteHeader";
+import { useI18n } from "@/lib/i18n";
 
 interface Stats {
   total_users: number;
@@ -62,6 +64,7 @@ type Tab = "overview" | "users" | "providers" | "models" | "keys";
 
 export default function AdminPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("overview");
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -111,7 +114,7 @@ export default function AdminPage() {
       setModels(m.models || []);
       setProviderKeys(k.keys || []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      setError(e instanceof Error ? e.message : t.common.failed);
     }
   }
 
@@ -124,7 +127,7 @@ export default function AdminPage() {
       setBalReason("");
       loadAll();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed");
+      alert(e instanceof Error ? e.message : t.common.failed);
     }
   }
 
@@ -149,62 +152,47 @@ export default function AdminPage() {
       setNewKeyValue("");
       loadAll();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed");
+      alert(e instanceof Error ? e.message : t.common.failed);
     }
   }
+
+  const tabItems: { key: Tab; label: string }[] = [
+    { key: "overview", label: t.admin.tabs.overview },
+    { key: "users", label: t.admin.tabs.users },
+    { key: "providers", label: t.admin.tabs.providers },
+    { key: "models", label: t.admin.tabs.models },
+    { key: "keys", label: t.admin.tabs.keys },
+  ];
 
   if (!stats) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-[var(--muted)]">
-          {error || "Loading admin panel..."}
+          {error || t.admin.loading}
         </div>
       </div>
     );
   }
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: "overview", label: "Overview" },
-    { key: "users", label: "Users" },
-    { key: "providers", label: "Providers" },
-    { key: "models", label: "Models" },
-    { key: "keys", label: "Provider Keys" },
-  ];
-
   return (
     <div className="min-h-screen">
-      <header
-        className="border-b px-6 py-3 flex items-center justify-between"
-        style={{ borderColor: "var(--border)" }}
-      >
-        <div className="flex items-center gap-4">
-          <a href="/dashboard" className="text-lg font-bold hover:opacity-80">
-            UniLLM
-          </a>
-          <span
-            className="text-xs px-2 py-0.5 rounded"
-            style={{ background: "var(--danger)", color: "white" }}
-          >
-            Admin
-          </span>
-        </div>
-      </header>
+      <SiteHeader adminBadge />
 
       <div className="max-w-6xl mx-auto p-6">
         {/* Tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
-          {tabs.map((t) => (
+          {tabItems.map((item) => (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
+              key={item.key}
+              onClick={() => setTab(item.key)}
               className="px-4 py-2 rounded-lg text-sm font-medium"
               style={{
                 background:
-                  tab === t.key ? "var(--primary)" : "var(--card)",
-                border: `1px solid ${tab === t.key ? "var(--primary)" : "var(--border)"}`,
+                  tab === item.key ? "var(--primary)" : "var(--card)",
+                border: `1px solid ${tab === item.key ? "var(--primary)" : "var(--border)"}`,
               }}
             >
-              {t.label}
+              {item.label}
             </button>
           ))}
         </div>
@@ -212,40 +200,40 @@ export default function AdminPage() {
         {/* Overview */}
         {tab === "overview" && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <Card label="Total Users" value={stats.total_users.toString()} />
+            <Card label={t.admin.stats.totalUsers} value={stats.total_users.toString()} />
             <Card
-              label="Total Requests"
+              label={t.admin.stats.totalRequests}
               value={stats.total_requests.toLocaleString()}
             />
-            <Card label="Total Cost" value={`$${stats.total_cost.toFixed(4)}`} />
+            <Card label={t.admin.stats.totalCost} value={`$${stats.total_cost.toFixed(4)}`} />
             <Card
-              label="Total Tokens"
+              label={t.admin.stats.totalTokens}
               value={stats.total_tokens.toLocaleString()}
             />
-            <Card label="Active Keys" value={stats.active_keys.toString()} />
+            <Card label={t.admin.stats.activeKeys} value={stats.active_keys.toString()} />
           </div>
         )}
 
         {/* Users */}
         {tab === "users" && (
-          <Panel title="USER MANAGEMENT">
+          <Panel title={t.admin.userManagement}>
             <div className="flex gap-2 mb-4 flex-wrap items-end">
               <Input
-                label="User ID"
+                label={t.admin.userId}
                 value={balUserId}
                 onChange={setBalUserId}
                 placeholder="ID"
                 width="w-20"
               />
               <Input
-                label="Amount ($)"
+                label={t.admin.amount}
                 value={balDelta}
                 onChange={setBalDelta}
                 placeholder="10"
                 width="w-24"
               />
               <Input
-                label="Reason"
+                label={t.admin.reason}
                 value={balReason}
                 onChange={setBalReason}
                 placeholder="top-up"
@@ -256,18 +244,18 @@ export default function AdminPage() {
                 className="px-4 py-2 rounded-lg text-sm font-medium text-white"
                 style={{ background: "var(--primary)" }}
               >
-                Add Balance
+                {t.admin.addBalance}
               </button>
             </div>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[var(--muted)]">
-                  <th className="pb-2">ID</th>
-                  <th className="pb-2">Email</th>
-                  <th className="pb-2">Name</th>
-                  <th className="pb-2">Role</th>
-                  <th className="pb-2 text-right">Balance</th>
-                  <th className="pb-2">Joined</th>
+                  <th className="pb-2">{t.admin.colId}</th>
+                  <th className="pb-2">{t.admin.colEmail}</th>
+                  <th className="pb-2">{t.admin.colName}</th>
+                  <th className="pb-2">{t.admin.colRole}</th>
+                  <th className="pb-2 text-right">{t.admin.colBalance}</th>
+                  <th className="pb-2">{t.admin.colJoined}</th>
                 </tr>
               </thead>
               <tbody>
@@ -312,15 +300,15 @@ export default function AdminPage() {
 
         {/* Providers */}
         {tab === "providers" && (
-          <Panel title="PROVIDERS">
+          <Panel title={t.admin.providersTitle}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[var(--muted)]">
-                  <th className="pb-2">ID</th>
-                  <th className="pb-2">Name</th>
-                  <th className="pb-2">Base URL</th>
-                  <th className="pb-2">Status</th>
-                  <th className="pb-2 text-right">Action</th>
+                  <th className="pb-2">{t.admin.colId}</th>
+                  <th className="pb-2">{t.admin.colName}</th>
+                  <th className="pb-2">{t.admin.colBaseUrl}</th>
+                  <th className="pb-2">{t.common.status}</th>
+                  <th className="pb-2 text-right">{t.common.action}</th>
                 </tr>
               </thead>
               <tbody>
@@ -336,7 +324,7 @@ export default function AdminPage() {
                       {p.base_url}
                     </td>
                     <td className="py-2">
-                      <StatusBadge active={p.is_active} />
+                      <StatusBadge active={p.is_active} labels={t.common} />
                     </td>
                     <td className="py-2 text-right">
                       <button
@@ -348,7 +336,7 @@ export default function AdminPage() {
                             : "var(--success)",
                         }}
                       >
-                        {p.is_active ? "Disable" : "Enable"}
+                        {p.is_active ? t.common.disable : t.common.enable}
                       </button>
                     </td>
                   </tr>
@@ -360,17 +348,17 @@ export default function AdminPage() {
 
         {/* Models */}
         {tab === "models" && (
-          <Panel title="MODEL CONFIGURATIONS">
+          <Panel title={t.admin.modelsTitle}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[var(--muted)]">
-                  <th className="pb-2">Public Name</th>
-                  <th className="pb-2">Upstream Model</th>
+                  <th className="pb-2">{t.admin.colPublicName}</th>
+                  <th className="pb-2">{t.admin.colUpstream}</th>
                   <th className="pb-2 text-right">Input $/1M</th>
                   <th className="pb-2 text-right">Output $/1M</th>
-                  <th className="pb-2 text-right">Max Tokens</th>
-                  <th className="pb-2">Status</th>
-                  <th className="pb-2 text-right">Action</th>
+                  <th className="pb-2 text-right">{t.admin.colMaxTokens}</th>
+                  <th className="pb-2">{t.common.status}</th>
+                  <th className="pb-2 text-right">{t.common.action}</th>
                 </tr>
               </thead>
               <tbody>
@@ -394,7 +382,7 @@ export default function AdminPage() {
                       {m.max_tokens.toLocaleString()}
                     </td>
                     <td className="py-2">
-                      <StatusBadge active={m.is_active} />
+                      <StatusBadge active={m.is_active} labels={t.common} />
                     </td>
                     <td className="py-2 text-right">
                       <button
@@ -406,7 +394,7 @@ export default function AdminPage() {
                             : "var(--success)",
                         }}
                       >
-                        {m.is_active ? "Disable" : "Enable"}
+                        {m.is_active ? t.common.disable : t.common.enable}
                       </button>
                     </td>
                   </tr>
@@ -418,11 +406,11 @@ export default function AdminPage() {
 
         {/* Provider Keys */}
         {tab === "keys" && (
-          <Panel title="UPSTREAM API KEYS">
+          <Panel title={t.admin.keysTitle}>
             <div className="flex gap-2 mb-4 flex-wrap items-end">
               <div className="w-32">
                 <label className="block text-xs text-[var(--muted)] mb-1">
-                  Provider ID
+                  {t.admin.providerId}
                 </label>
                 <select
                   value={newKeyProviderId}
@@ -434,7 +422,7 @@ export default function AdminPage() {
                     color: "var(--foreground)",
                   }}
                 >
-                  <option value="">Select...</option>
+                  <option value="">{t.admin.selectProvider}</option>
                   {providers.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} ({p.id})
@@ -443,14 +431,14 @@ export default function AdminPage() {
                 </select>
               </div>
               <Input
-                label="API Key"
+                label={t.admin.apiKey}
                 value={newKeyValue}
                 onChange={setNewKeyValue}
                 placeholder="sk-..."
                 width="flex-1"
               />
               <Input
-                label="RPM"
+                label={t.admin.rpm}
                 value={newKeyRpm}
                 onChange={setNewKeyRpm}
                 placeholder="60"
@@ -461,17 +449,17 @@ export default function AdminPage() {
                 className="px-4 py-2 rounded-lg text-sm font-medium text-white"
                 style={{ background: "var(--primary)" }}
               >
-                Add Key
+                {t.admin.addKey}
               </button>
             </div>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[var(--muted)]">
-                  <th className="pb-2">ID</th>
-                  <th className="pb-2">Provider</th>
-                  <th className="pb-2">Key Prefix</th>
-                  <th className="pb-2 text-right">RPM</th>
-                  <th className="pb-2">Status</th>
+                  <th className="pb-2">{t.admin.colId}</th>
+                  <th className="pb-2">{t.admin.colProvider}</th>
+                  <th className="pb-2">{t.admin.colKeyPrefix}</th>
+                  <th className="pb-2 text-right">{t.admin.rpm}</th>
+                  <th className="pb-2">{t.common.status}</th>
                 </tr>
               </thead>
               <tbody>
@@ -491,7 +479,7 @@ export default function AdminPage() {
                     </td>
                     <td className="py-2 text-right">{k.rpm}</td>
                     <td className="py-2">
-                      <StatusBadge active={k.is_active} />
+                      <StatusBadge active={k.is_active} labels={t.common} />
                     </td>
                   </tr>
                 ))}
@@ -501,7 +489,7 @@ export default function AdminPage() {
                       colSpan={5}
                       className="py-4 text-center text-[var(--muted)] text-sm"
                     >
-                      No provider keys configured
+                      {t.admin.noProviderKeys}
                     </td>
                   </tr>
                 )}
@@ -552,7 +540,13 @@ function Panel({
   );
 }
 
-function StatusBadge({ active }: { active: boolean }) {
+function StatusBadge({
+  active,
+  labels,
+}: {
+  active: boolean;
+  labels: { active: string; disabled: string };
+}) {
   return (
     <span
       className="text-xs px-1.5 py-0.5 rounded"
@@ -561,7 +555,7 @@ function StatusBadge({ active }: { active: boolean }) {
         color: active ? "var(--success)" : "var(--danger)",
       }}
     >
-      {active ? "active" : "disabled"}
+      {active ? labels.active : labels.disabled}
     </span>
   );
 }

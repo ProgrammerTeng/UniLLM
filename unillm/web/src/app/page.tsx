@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isLoggedIn, logout, getModelCatalog } from "@/lib/api";
+import { getModelCatalog } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
+import { SiteHeader } from "@/components/SiteHeader";
 
 interface ModelInfo {
   id: string;
@@ -28,59 +30,12 @@ function getVendorColor(vendor: string): string {
   return VENDOR_COLORS[vendor] || "#737373";
 }
 
-const FEATURES = [
-  {
-    title: "OpenAI Compatible",
-    description:
-      "Drop-in replacement for the OpenAI SDK. Just change the base URL and you're ready to go.",
-    icon: "{}",
-  },
-  {
-    title: "Transparent Pricing",
-    description:
-      "Pay only for tokens used. See costs in real-time on your dashboard with per-request breakdowns.",
-    icon: "$",
-  },
-  {
-    title: "Multi-Vendor",
-    description:
-      "Access Anthropic, Google, DeepSeek, and more from a single API key. No separate accounts needed.",
-    icon: "\u2194",
-  },
-  {
-    title: "Built-in Failover",
-    description:
-      "Auto-retry with circuit breaker protection. Your app stays up even when providers go down.",
-    icon: "\u21bb",
-  },
-  {
-    title: "Real-time Dashboard",
-    description:
-      "Monitor usage, costs, and latency live. Track every request with detailed logging.",
-    icon: "\u25ce",
-  },
-  {
-    title: "Developer First",
-    description:
-      "Full API docs, interactive playground, and SDK support. Ship faster with tools built for devs.",
-    icon: ">_",
-  },
-];
-
-const STATS = [
-  { label: "Models", value: "7+" },
-  { label: "Vendors", value: "3" },
-  { label: "Uptime", value: "99.9%" },
-  { label: "Latency", value: "<1s" },
-];
-
 export default function Home() {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const { t } = useI18n();
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelsLoaded, setModelsLoaded] = useState(false);
 
   useEffect(() => {
-    setLoggedIn(isLoggedIn());
     loadModels();
   }, []);
 
@@ -97,77 +52,35 @@ export default function Home() {
 
   const previewModels = models.slice(0, 6);
 
+  const features = [
+    { key: "openai" as const, icon: "{}" },
+    { key: "pricing" as const, icon: "$" },
+    { key: "multiVendor" as const, icon: "\u2194" },
+    { key: "failover" as const, icon: "\u21bb" },
+    { key: "dashboard" as const, icon: "\u25ce" },
+    { key: "devFirst" as const, icon: ">_" },
+  ];
+
+  const stats = [
+    { label: t.home.statsModels, value: "7+" },
+    { label: t.home.statsVendors, value: "3" },
+    { label: t.home.statsUptime, value: "99.9%" },
+    { label: t.home.statsLatency, value: "<1s" },
+  ];
+
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <header
-        className="border-b px-6 py-3 flex items-center justify-between sticky top-0 z-50"
-        style={{
-          borderColor: "var(--border)",
-          background: "var(--background)",
-        }}
-      >
-        <div className="flex items-center gap-4">
-          <a href="/" className="text-lg font-bold hover:opacity-80 transition-opacity">
-            UniLLM
-          </a>
-          <a
-            href="/models"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Models
-          </a>
-          <a
-            href="/playground"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Playground
-          </a>
-          <a
-            href="/docs"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Docs
-          </a>
-        </div>
-        <div className="flex items-center gap-4">
-          {loggedIn ? (
-            <>
-              <a
-                href="/dashboard"
-                className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-              >
-                Dashboard
-              </a>
-              <button
-                onClick={logout}
-                className="text-sm text-[var(--muted)] hover:text-white"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <a
-              href="/login"
-              className="text-sm px-4 py-1.5 rounded-lg font-medium"
-              style={{ background: "var(--primary)", color: "#fff" }}
-            >
-              Sign In
-            </a>
-          )}
-        </div>
-      </header>
+      <SiteHeader sticky />
 
-      {/* Hero Section */}
       <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
-          One API for All Leading{" "}
-          <span style={{ color: "var(--primary)" }}>AI Models</span>
+          {t.home.heroTitle}{" "}
+          <span style={{ color: "var(--primary)" }}>
+            {t.home.heroTitleHighlight}
+          </span>
         </h1>
         <p className="text-lg md:text-xl text-[var(--muted)] max-w-2xl mx-auto mb-10 leading-relaxed">
-          Access Claude, Gemini, DeepSeek and more through a single
-          OpenAI-compatible API. No vendor lock-in, transparent pricing, instant
-          setup.
+          {t.home.heroSubtitle}
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap mb-14">
           <a
@@ -181,7 +94,7 @@ export default function Home() {
               (e.currentTarget.style.background = "var(--primary)")
             }
           >
-            Get Started Free
+            {t.home.getStarted}
           </a>
           <a
             href="/models"
@@ -192,11 +105,10 @@ export default function Home() {
               color: "var(--foreground)",
             }}
           >
-            View Models
+            {t.home.viewModels}
           </a>
         </div>
 
-        {/* Code Snippet */}
         <div className="max-w-2xl mx-auto text-left">
           <div
             className="rounded-xl overflow-hidden"
@@ -221,7 +133,7 @@ export default function Home() {
                 className="w-2.5 h-2.5 rounded-full inline-block"
                 style={{ background: "#22c55e" }}
               />
-              <span className="ml-2">Terminal</span>
+              <span className="ml-2">{t.home.terminal}</span>
             </div>
             <pre
               className="text-xs md:text-sm p-5 overflow-x-auto font-mono leading-relaxed"
@@ -250,13 +162,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats Bar */}
       <section
         className="border-y"
         style={{ borderColor: "var(--border)", background: "var(--card)" }}
       >
         <div className="max-w-5xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          {STATS.map((s) => (
+          {stats.map((s) => (
             <div key={s.label}>
               <div
                 className="text-3xl font-bold mb-1"
@@ -270,65 +181,61 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Grid */}
       <section className="max-w-5xl mx-auto px-6 py-20">
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">
-          Everything You Need
+          {t.home.featuresTitle}
         </h2>
         <p className="text-[var(--muted)] text-center mb-12 max-w-xl mx-auto">
-          A complete platform to integrate AI models into your product, without the
-          complexity.
+          {t.home.featuresSubtitle}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {FEATURES.map((f) => (
-            <div
-              key={f.title}
-              className="rounded-xl p-6 transition-colors"
-              style={{
-                background: "var(--card)",
-                border: "1px solid var(--border)",
-              }}
-            >
+          {features.map((f) => {
+            const feat = t.home.features[f.key];
+            return (
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold mb-4"
+                key={f.key}
+                className="rounded-xl p-6 transition-colors"
                 style={{
-                  background: "var(--primary)15",
-                  color: "var(--primary)",
-                  border: "1px solid var(--primary)30",
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
                 }}
               >
-                {f.icon}
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold mb-4"
+                  style={{
+                    background: "var(--primary)15",
+                    color: "var(--primary)",
+                    border: "1px solid var(--primary)30",
+                  }}
+                >
+                  {f.icon}
+                </div>
+                <h3 className="text-base font-semibold mb-2">{feat.title}</h3>
+                <p className="text-sm text-[var(--muted)] leading-relaxed">
+                  {feat.description}
+                </p>
               </div>
-              <h3 className="text-base font-semibold mb-2">{f.title}</h3>
-              <p className="text-sm text-[var(--muted)] leading-relaxed">
-                {f.description}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
-      {/* Model Preview Section */}
-      <section
-        className="border-y"
-        style={{ borderColor: "var(--border)" }}
-      >
+      <section className="border-y" style={{ borderColor: "var(--border)" }}>
         <div className="max-w-5xl mx-auto px-6 py-20">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">
-            Available Models
+            {t.home.modelsTitle}
           </h2>
           <p className="text-[var(--muted)] text-center mb-12 max-w-xl mx-auto">
-            Access the best models from every major provider, all through one
-            consistent API.
+            {t.home.modelsSubtitle}
           </p>
 
           {!modelsLoaded ? (
             <div className="text-center py-12 text-[var(--muted)]">
-              Loading models...
+              {t.home.loadingModels}
             </div>
           ) : previewModels.length === 0 ? (
             <div className="text-center py-12 text-[var(--muted)]">
-              No models available at the moment.
+              {t.home.noModels}
             </div>
           ) : (
             <>
@@ -363,25 +270,25 @@ export default function Home() {
                       <div className="flex gap-4 text-sm">
                         <div>
                           <div className="text-[var(--muted)] text-xs mb-0.5">
-                            Input
+                            {t.home.input}
                           </div>
                           <div className="font-mono">
                             ${m.input_price_per_1m.toFixed(2)}
                             <span className="text-[var(--muted)] text-xs">
                               {" "}
-                              /1M
+                              {t.home.perMillion}
                             </span>
                           </div>
                         </div>
                         <div>
                           <div className="text-[var(--muted)] text-xs mb-0.5">
-                            Output
+                            {t.home.output}
                           </div>
                           <div className="font-mono">
                             ${m.output_price_per_1m.toFixed(2)}
                             <span className="text-[var(--muted)] text-xs">
                               {" "}
-                              /1M
+                              {t.home.perMillion}
                             </span>
                           </div>
                         </div>
@@ -396,7 +303,7 @@ export default function Home() {
                   className="text-sm font-medium transition-colors"
                   style={{ color: "var(--primary)" }}
                 >
-                  View All Models &rarr;
+                  {t.home.viewAllModels} &rarr;
                 </a>
               </div>
             </>
@@ -404,13 +311,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Pricing Section */}
       <section className="max-w-5xl mx-auto px-6 py-20">
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">
-          Simple, Transparent Pricing
+          {t.home.pricingTitle}
         </h2>
         <p className="text-[var(--muted)] text-center mb-12 max-w-xl mx-auto">
-          Pay per token. No monthly fees. No minimums.
+          {t.home.pricingSubtitle}
         </p>
 
         <div
@@ -424,56 +330,52 @@ export default function Home() {
             <thead>
               <tr
                 className="text-left text-[var(--muted)]"
-                style={{
-                  borderBottom: "1px solid var(--border)",
-                }}
+                style={{ borderBottom: "1px solid var(--border)" }}
               >
-                <th className="px-5 py-4 font-medium">Model</th>
+                <th className="px-5 py-4 font-medium">{t.home.pricingModel}</th>
                 <th className="px-5 py-4 font-medium text-right">
-                  Input / 1M tokens
+                  {t.home.pricingInput}
                 </th>
                 <th className="px-5 py-4 font-medium text-right">
-                  Output / 1M tokens
+                  {t.home.pricingOutput}
                 </th>
               </tr>
             </thead>
             <tbody>
-              {(models.length > 0 ? models.slice(0, 6) : []).map(
-                (m, i) => (
-                  <tr
-                    key={m.id}
-                    style={{
-                      borderTop: i > 0 ? "1px solid var(--border)" : undefined,
-                    }}
-                  >
-                    <td className="px-5 py-3.5">
-                      <span className="font-mono text-sm">{m.id}</span>
-                      <span
-                        className="ml-2 text-xs px-1.5 py-0.5 rounded"
-                        style={{
-                          color: getVendorColor(m.vendor || "Other"),
-                          opacity: 0.8,
-                        }}
-                      >
-                        {m.vendor || "Other"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-right font-mono">
-                      ${m.input_price_per_1m.toFixed(2)}
-                    </td>
-                    <td className="px-5 py-3.5 text-right font-mono">
-                      ${m.output_price_per_1m.toFixed(2)}
-                    </td>
-                  </tr>
-                )
-              )}
+              {(models.length > 0 ? models.slice(0, 6) : []).map((m, i) => (
+                <tr
+                  key={m.id}
+                  style={{
+                    borderTop: i > 0 ? "1px solid var(--border)" : undefined,
+                  }}
+                >
+                  <td className="px-5 py-3.5">
+                    <span className="font-mono text-sm">{m.id}</span>
+                    <span
+                      className="ml-2 text-xs px-1.5 py-0.5 rounded"
+                      style={{
+                        color: getVendorColor(m.vendor || "Other"),
+                        opacity: 0.8,
+                      }}
+                    >
+                      {m.vendor || "Other"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-right font-mono">
+                    ${m.input_price_per_1m.toFixed(2)}
+                  </td>
+                  <td className="px-5 py-3.5 text-right font-mono">
+                    ${m.output_price_per_1m.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
               {models.length === 0 && (
                 <tr>
                   <td
                     colSpan={3}
                     className="px-5 py-8 text-center text-[var(--muted)]"
                   >
-                    Pricing data loading...
+                    {t.home.pricingLoading}
                   </td>
                 </tr>
               )}
@@ -493,18 +395,17 @@ export default function Home() {
               (e.currentTarget.style.background = "var(--primary)")
             }
           >
-            Start with $1 Free Credit
+            {t.home.startFreeCredit}
           </a>
         </div>
       </section>
 
-      {/* Footer */}
       <footer
         className="border-t px-6 py-8 text-center"
         style={{ borderColor: "var(--border)" }}
       >
         <p className="text-sm text-[var(--muted)]">
-          &copy; 2026 UniLLM. Built for developers.
+          &copy; 2026 UniLLM. {t.home.footer}
         </p>
       </footer>
     </div>

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   isLoggedIn,
-  logout,
   getUsageSummary,
   getUsageByModel,
   getUsageDaily,
@@ -16,6 +15,8 @@ import {
 } from "@/lib/api";
 import UsageChart from "@/components/UsageChart";
 import RecentLogs from "@/components/RecentLogs";
+import { SiteHeader } from "@/components/SiteHeader";
+import { useI18n } from "@/lib/i18n";
 
 interface Summary {
   total_requests: number;
@@ -47,6 +48,7 @@ interface APIKey {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [models, setModels] = useState<ModelStat[]>([]);
   const [keys, setKeys] = useState<APIKey[]>([]);
@@ -98,12 +100,12 @@ export default function DashboardPage() {
       setNewKeyName("");
       loadData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed");
+      alert(err instanceof Error ? err.message : t.common.failed);
     }
   }
 
   async function handleDeleteKey(id: number) {
-    if (!confirm("Delete this API key?")) return;
+    if (!confirm(t.common.confirmDeleteKey)) return;
     await deleteAPIKey(id);
     loadData();
   }
@@ -111,66 +113,35 @@ export default function DashboardPage() {
   if (!summary) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-[var(--muted)]">Loading...</div>
+        <div className="text-[var(--muted)]">{t.common.loading}</div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <header
-        className="border-b px-6 py-3 flex items-center justify-between"
-        style={{ borderColor: "var(--border)" }}
-      >
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-bold">UniLLM</h1>
-          <a
-            href="/models"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Models
-          </a>
-          <a
-            href="/playground"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Playground
-          </a>
-          <a
-            href="/docs"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Docs
-          </a>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-[var(--muted)]">
-            Balance: ${summary.balance.toFixed(2)}
-          </span>
-          <button
-            onClick={logout}
-            className="text-sm text-[var(--muted)] hover:text-white"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+      <SiteHeader balance={summary.balance} />
 
       <div className="max-w-6xl mx-auto p-6">
         {/* Tabs */}
         <div className="flex gap-4 mb-6">
-          {(["overview", "logs", "keys", "settings"] as const).map((t) => (
+          {(["overview", "logs", "keys", "settings"] as const).map((tabKey) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               style={{
-                background: tab === t ? "var(--primary)" : "var(--card)",
-                border: `1px solid ${tab === t ? "var(--primary)" : "var(--border)"}`,
+                background: tab === tabKey ? "var(--primary)" : "var(--card)",
+                border: `1px solid ${tab === tabKey ? "var(--primary)" : "var(--border)"}`,
               }}
             >
-              {t === "overview" ? "Overview" : t === "logs" ? "Logs" : "API Keys"}
+              {tabKey === "overview"
+                ? t.dashboard.tabs.overview
+                : tabKey === "logs"
+                  ? t.dashboard.tabs.logs
+                  : tabKey === "keys"
+                    ? t.dashboard.tabs.keys
+                    : t.dashboard.tabs.settings}
             </button>
           ))}
         </div>
@@ -180,27 +151,27 @@ export default function DashboardPage() {
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <StatCard
-                label="Total Requests"
+                label={t.dashboard.stats.totalRequests}
                 value={summary.total_requests.toLocaleString()}
               />
               <StatCard
-                label="Total Tokens"
+                label={t.dashboard.stats.totalTokens}
                 value={summary.total_tokens.toLocaleString()}
               />
               <StatCard
-                label="Total Cost"
+                label={t.dashboard.stats.totalCost}
                 value={`$${summary.total_cost.toFixed(4)}`}
               />
               <StatCard
-                label="Today Cost"
+                label={t.dashboard.stats.todayCost}
                 value={`$${summary.today_cost.toFixed(4)}`}
               />
               <StatCard
-                label="Avg Latency"
+                label={t.dashboard.stats.avgLatency}
                 value={`${summary.avg_latency.toFixed(1)}s`}
               />
               <StatCard
-                label="Success Rate"
+                label={t.dashboard.stats.successRate}
                 value={`${summary.success_rate.toFixed(1)}%`}
                 color={
                   summary.success_rate >= 99
@@ -219,7 +190,7 @@ export default function DashboardPage() {
               }}
             >
               <h3 className="text-sm font-semibold mb-4 text-[var(--muted)]">
-                USAGE TREND
+                {t.dashboard.usageTrend}
               </h3>
               <UsageChart data={daily} />
             </div>
@@ -233,19 +204,19 @@ export default function DashboardPage() {
               }}
             >
               <h3 className="text-sm font-semibold mb-4 text-[var(--muted)]">
-                USAGE BY MODEL
+                {t.dashboard.usageByModel}
               </h3>
               {models.length === 0 ? (
-                <p className="text-sm text-[var(--muted)]">No usage yet</p>
+                <p className="text-sm text-[var(--muted)]">{t.dashboard.noUsage}</p>
               ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-[var(--muted)]">
-                      <th className="pb-3">Model</th>
-                      <th className="pb-3 text-right">Requests</th>
-                      <th className="pb-3 text-right">Tokens</th>
-                      <th className="pb-3 text-right">Cost</th>
-                      <th className="pb-3 text-right">Avg Latency</th>
+                      <th className="pb-3">{t.logs.colModel}</th>
+                      <th className="pb-3 text-right">{t.dashboard.stats.totalRequests}</th>
+                      <th className="pb-3 text-right">{t.logs.colTokens}</th>
+                      <th className="pb-3 text-right">{t.logs.colCost}</th>
+                      <th className="pb-3 text-right">{t.logs.colLatency}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -284,7 +255,7 @@ export default function DashboardPage() {
             }}
           >
             <h3 className="text-sm font-semibold mb-4 text-[var(--muted)]">
-              RECENT REQUESTS
+              {t.dashboard.recentRequests}
             </h3>
             <RecentLogs logs={recentLogs} />
           </div>
@@ -299,7 +270,7 @@ export default function DashboardPage() {
             }}
           >
             <h3 className="text-sm font-semibold mb-4 text-[var(--muted)]">
-              API KEYS
+              {t.dashboard.apiKeys}
             </h3>
 
             {/* Create Key */}
@@ -307,7 +278,7 @@ export default function DashboardPage() {
               <input
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
-                placeholder="Key name (e.g. production)"
+                placeholder={t.dashboard.keyNamePlaceholder}
                 className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
                 style={{
                   background: "var(--background)",
@@ -320,7 +291,7 @@ export default function DashboardPage() {
                 className="px-4 py-2 rounded-lg text-sm font-medium text-white"
                 style={{ background: "var(--primary)" }}
               >
-                Create
+                {t.common.create}
               </button>
             </div>
 
@@ -333,7 +304,7 @@ export default function DashboardPage() {
                 }}
               >
                 <p className="mb-1 font-medium" style={{ color: "var(--success)" }}>
-                  Key created! Copy it now — it won&apos;t be shown again.
+                  {t.dashboard.keyCreatedHint}
                 </p>
                 <code className="block font-mono text-xs break-all">
                   {newKeyResult}
@@ -343,16 +314,16 @@ export default function DashboardPage() {
 
             {/* Key List */}
             {keys.length === 0 ? (
-              <p className="text-sm text-[var(--muted)]">No API keys yet</p>
+              <p className="text-sm text-[var(--muted)]">{t.dashboard.noApiKeys}</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-[var(--muted)]">
-                    <th className="pb-3">Name</th>
-                    <th className="pb-3">Key</th>
-                    <th className="pb-3">Scope</th>
-                    <th className="pb-3">Created</th>
-                    <th className="pb-3 text-right">Action</th>
+                    <th className="pb-3">{t.dashboard.colName}</th>
+                    <th className="pb-3">{t.dashboard.colKey}</th>
+                    <th className="pb-3">{t.dashboard.colScope}</th>
+                    <th className="pb-3">{t.dashboard.colCreated}</th>
+                    <th className="pb-3 text-right">{t.common.action}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -376,7 +347,7 @@ export default function DashboardPage() {
                           className="text-xs px-2 py-1 rounded"
                           style={{ color: "var(--danger)" }}
                         >
-                          Delete
+                          {t.common.delete}
                         </button>
                       </td>
                     </tr>
@@ -396,14 +367,14 @@ export default function DashboardPage() {
             }}
           >
             <h3 className="text-sm font-semibold mb-4 text-[var(--muted)]">
-              CHANGE PASSWORD
+              {t.dashboard.changePassword}
             </h3>
             <div className="flex flex-col gap-3">
               <input
                 type="password"
                 value={oldPwd}
                 onChange={(e) => setOldPwd(e.target.value)}
-                placeholder="Current password"
+                placeholder={t.dashboard.currentPassword}
                 className="px-3 py-2 rounded-lg text-sm outline-none"
                 style={{
                   background: "var(--background)",
@@ -414,7 +385,7 @@ export default function DashboardPage() {
                 type="password"
                 value={newPwd}
                 onChange={(e) => setNewPwd(e.target.value)}
-                placeholder="New password (min 8 characters)"
+                placeholder={t.dashboard.newPassword}
                 className="px-3 py-2 rounded-lg text-sm outline-none"
                 style={{
                   background: "var(--background)",
@@ -426,23 +397,23 @@ export default function DashboardPage() {
                   setPwdMsg("");
                   try {
                     await changePassword(oldPwd, newPwd);
-                    setPwdMsg("Password changed successfully");
+                    setPwdMsg(t.dashboard.passwordChanged);
                     setOldPwd("");
                     setNewPwd("");
                   } catch (err) {
-                    setPwdMsg(err instanceof Error ? err.message : "Failed");
+                    setPwdMsg(err instanceof Error ? err.message : t.common.failed);
                   }
                 }}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-white w-fit"
                 style={{ background: "var(--primary)" }}
               >
-                Update Password
+                {t.dashboard.updatePassword}
               </button>
               {pwdMsg && (
                 <p
                   className="text-sm"
                   style={{
-                    color: pwdMsg.includes("success")
+                    color: pwdMsg === t.dashboard.passwordChanged
                       ? "var(--success)"
                       : "var(--danger)",
                   }}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+
 interface DailyData {
   date: string;
   requests: number;
@@ -8,9 +10,11 @@ interface DailyData {
 }
 
 export default function UsageChart({ data }: { data: DailyData[] }) {
+  const { t } = useI18n();
+
   if (data.length === 0) {
     return (
-      <p className="text-sm text-[var(--muted)]">No usage data yet</p>
+      <p className="text-sm text-[var(--muted)]">{t.dashboard.noUsage}</p>
     );
   }
 
@@ -19,10 +23,9 @@ export default function UsageChart({ data }: { data: DailyData[] }) {
 
   return (
     <div className="space-y-4">
-      {/* Requests bar chart */}
       <div>
         <div className="text-xs text-[var(--muted)] mb-2">
-          Daily Requests (last 30 days)
+          {t.dashboard.chartDailyRequests}
         </div>
         <div className="flex items-end gap-[2px] h-24">
           {data.map((d) => {
@@ -54,10 +57,9 @@ export default function UsageChart({ data }: { data: DailyData[] }) {
         </div>
       </div>
 
-      {/* Cost bar chart */}
       <div>
         <div className="text-xs text-[var(--muted)] mb-2">
-          Daily Cost (last 30 days)
+          {t.dashboard.chartDailyCost}
         </div>
         <div className="flex items-end gap-[2px] h-24">
           {data.map((d) => {
