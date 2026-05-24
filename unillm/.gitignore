@@ -1,0 +1,20 @@
+.env
+*.exe
+/server
+/unillm
+/tmp
+vendor/
+.DS_Store
+
+# Frontend
+node_modules/
+.next/
+web/node_modules/
+web/.next/
+web/out/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

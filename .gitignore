@@ -1,0 +1,26 @@
+.DS_Store
+Thumbs.db
+
+# Secrets & local config
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+*.exe
+/server
+/tmp
+vendor/
+
+# Frontend
+node_modules/
+.next/
+web/node_modules/
+web/.next/
+web/out/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
