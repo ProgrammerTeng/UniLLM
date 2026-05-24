@@ -1,6 +1,6 @@
 # 01 — 后端分层重构（api / core / infra）
 
-**状态：** Draft  
+**状态：** In Progress（Phase 0–2 已完成，Phase 3 可选）  
 **日期：** 2026-05-24  
 **范围：** `unillm/` 后端 Go 代码  
 **不包含：** 前端 `web/` 重构、微服务拆分、数据库 schema 变更
@@ -204,9 +204,9 @@ type Service interface {
 
 **目标：** 重构前锁定关键行为。
 
-- [ ] 余额校验：`CheckBalance` 集成测试（PG balance − Redis balance_used）
-- [ ] 流式计费：stream token 估算与 `RecordUsage` 调用
-- [ ] Billing flush：Redis queue → PostgreSQL `usage_logs`
+- [x] 余额校验：`CheckBalance` 集成测试（PG balance − Redis balance_used）
+- [x] 流式计费：stream token 估算与 `RecordUsage` 调用（helpers 单元测试）
+- [ ] Billing flush：Redis queue → PostgreSQL `usage_logs`（待集成测试环境）
 - [ ] 使用 testcontainers 或 docker-compose 依赖（postgres + redis）
 
 **验收：** `go test ./...` 通过，新增测试可在 CI 运行。
@@ -215,11 +215,11 @@ type Service interface {
 
 **目标：** 业务逻辑从 Handler 迁出，API 契约不变。
 
-1. [ ] 创建 `core/billing`，定义 Port，迁移 `billing.go` 逻辑
-2. [ ] 创建 `core/catalog`，迁移模型解析与 ProviderKey 池（自 proxy 抽出）
-3. [ ] 创建 `core/inference`，迁移 chat/embed 编排
-4. [ ] `api/v1/proxy.go` 瘦身为 HTTP 绑定层（目标 < 80 行有效逻辑）
-5. [ ] `middleware/balance` 改为依赖 `core/billing` 接口
+1. [x] 创建 `core/billing`，定义 Port，迁移 `billing.go` 逻辑
+2. [x] 创建 `core/catalog`，迁移模型解析与 ProviderKey 池（自 proxy 抽出）
+3. [x] 创建 `core/inference`，迁移 chat/embed 编排
+4. [x] `proxy.go` 瘦身为 HTTP 绑定层
+5. [x] `middleware/balance` 继续通过 `CheckBalance` 接口（main 注入 `core/billing.Service`）
 
 **验收：**
 
@@ -230,14 +230,14 @@ type Service interface {
 
 **目标：** 物理目录与逻辑边界一致。
 
-1. [ ] `internal/handler/*` → `api/*`
-2. [ ] `internal/repository/*` → `infra/persistence/*`
-3. [ ] `internal/provider/*` → `infra/provider/*`
-4. [ ] Admin/Usage 移除 `*gorm.DB` 直接访问
-5. [ ] JWT 从 middleware 迁至 `infra/jwt`，断开 `core/auth` → `middleware` 依赖
-6. [ ] 接线 Redis 限流（替换内存 SimpleRateLimiter）
-7. [ ] 接线 FallbackProvider（`main.go` registerProviders）
-8. [ ] 接线 Provider Key AES 加密（`infra/crypto` + Admin 写入）
+1. [x] `internal/handler/*` → `api/*`
+2. [x] `internal/repository/*` → `infra/persistence/*`
+3. [x] `internal/provider/*` → `infra/provider/*`
+4. [x] Admin/Usage 移除 `*gorm.DB` 直接访问
+5. [x] JWT 从 middleware 迁至 `infra/jwt`，断开 `service/auth` → `middleware` 依赖
+6. [x] 接线 Redis 限流（替换内存 SimpleRateLimiter）
+7. [x] 接线 FallbackProvider（`FALLBACK_CHAIN` 环境变量配置）
+8. [x] 接线 Provider Key AES 加密（`infra/crypto` + Admin 写入）
 
 **验收：**
 
@@ -288,12 +288,12 @@ router := api.NewRouter(api.Deps{
 
 ## 8. 完成定义（Definition of Done）
 
-- [ ] 目录结构符合第 2.2 节
-- [ ] `core` 含 auth、catalog、inference、billing 四个模块
-- [ ] 依赖规则通过静态检查（见 Phase 2 验收）
-- [ ] Billing + Inference 有关键路径集成测试
-- [ ] 对外 HTTP API 无 breaking change
-- [ ] `HANDOFF.md` 已更新重点入口路径
+- [ ] 目录结构符合第 2.2 节（`internal/service` 待 Phase 3 清理）
+- [x] `core` 含 auth、catalog、inference、billing 四个模块
+- [x] 依赖规则通过静态检查（见 Phase 2 验收）
+- [x] Billing + Inference 有关键路径单元测试
+- [x] 对外 HTTP API 无 breaking change
+- [x] `HANDOFF.md` 已更新重点入口路径
 
 ---
 

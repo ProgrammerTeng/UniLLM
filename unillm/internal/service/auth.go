@@ -6,24 +6,24 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/unillm/unillm/internal/middleware"
+	infrajwt "github.com/unillm/unillm/infra/jwt"
+	"github.com/unillm/unillm/infra/persistence"
 	"github.com/unillm/unillm/internal/model"
-	"github.com/unillm/unillm/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
-	userRepo   *repository.UserRepo
-	keyRepo    *repository.APIKeyRepo
-	jwtSecret  string
+	userRepo   *persistence.UserRepo
+	keyRepo    *persistence.APIKeyRepo
+	jwtIssuer  *infrajwt.Issuer
 	bcryptCost int
 }
 
-func NewAuthService(userRepo *repository.UserRepo, keyRepo *repository.APIKeyRepo, jwtSecret string, bcryptCost int) *AuthService {
+func NewAuthService(userRepo *persistence.UserRepo, keyRepo *persistence.APIKeyRepo, jwtIssuer *infrajwt.Issuer, bcryptCost int) *AuthService {
 	return &AuthService{
 		userRepo:   userRepo,
 		keyRepo:    keyRepo,
-		jwtSecret:  jwtSecret,
+		jwtIssuer:  jwtIssuer,
 		bcryptCost: bcryptCost,
 	}
 }
@@ -60,13 +60,13 @@ func (s *AuthService) Register(input RegisterInput) (*AuthResponse, error) {
 		PasswordHash: string(hash),
 		Name:         input.Name,
 		Role:         "user",
-		Balance:      1.0, // $1 free credit for new users
+		Balance:      1.0,
 	}
 	if err := s.userRepo.Create(user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	token, err := middleware.GenerateJWT(s.jwtSecret, user.ID, user.Email, user.Role)
+	token, err := s.jwtIssuer.Generate(user.ID, user.Email, user.Role)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -84,7 +84,7 @@ func (s *AuthService) Login(input LoginInput) (*AuthResponse, error) {
 		return nil, errors.New("invalid email or password")
 	}
 
-	token, err := middleware.GenerateJWT(s.jwtSecret, user.ID, user.Email, user.Role)
+	token, err := s.jwtIssuer.Generate(user.ID, user.Email, user.Role)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -92,10 +92,9 @@ func (s *AuthService) Login(input LoginInput) (*AuthResponse, error) {
 	return &AuthResponse{Token: token, User: *user}, nil
 }
 
-// CreateAPIKey generates a new API key for a user.
 func (s *AuthService) CreateAPIKey(userID int64, name, scope string) (string, *model.APIKey, error) {
 	raw := generateAPIKey()
-	hash := middleware.HashAPIKey(raw)
+	hash := infrajwt.HashAPIKey(raw)
 
 	key := &model.APIKey{
 		UserID:    userID,
@@ -120,23 +119,19 @@ func (s *AuthService) DeleteAPIKey(id, userID int64) error {
 	return s.keyRepo.Deactivate(id, userID)
 }
 
-// GetUser returns a user by ID.
 func (s *AuthService) GetUser(id int64) (*model.User, error) {
 	return s.userRepo.FindByID(id)
 }
 
-// ResolveAPIKey looks up an API key by hash. Used by the auth middleware.
 func (s *AuthService) ResolveAPIKey(keyHash string) (userID int64, keyID int64, ok bool) {
 	key, err := s.keyRepo.FindByHash(keyHash)
 	if err != nil {
 		return 0, 0, false
 	}
-	// Fire-and-forget last_used update
 	go func() { _ = s.keyRepo.UpdateLastUsed(key.ID) }()
 	return key.UserID, key.ID, true
 }
 
-// ChangePassword updates the user's password after verifying the old one.
 func (s *AuthService) ChangePassword(userID int64, oldPassword, newPassword string) error {
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
