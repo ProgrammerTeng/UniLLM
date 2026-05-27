@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { isLoggedIn } from "@/lib/api";
+import { SiteHeader } from "@/components/SiteHeader";
+import { useI18n } from "@/lib/i18n";
 
 interface Message {
   role: "system" | "user" | "assistant";
@@ -11,6 +13,7 @@ interface Message {
 
 export default function PlaygroundPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("deepseek-chat");
   const [models, setModels] = useState<string[]>([]);
@@ -127,7 +130,7 @@ export default function PlaygroundPage() {
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: fullText || "(empty response)" },
+        { role: "assistant", content: fullText || t.playground.emptyResponse },
       ]);
       setStreamText("");
     } catch (err) {
@@ -135,7 +138,7 @@ export default function PlaygroundPage() {
         ...prev,
         {
           role: "assistant",
-          content: `Error: ${err instanceof Error ? err.message : "Request failed"}`,
+          content: `Error: ${err instanceof Error ? err.message : t.playground.requestFailed}`,
         },
       ]);
     } finally {
@@ -151,31 +154,13 @@ export default function PlaygroundPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header
-        className="border-b px-6 py-3 flex items-center justify-between"
-        style={{ borderColor: "var(--border)" }}
-      >
-        <div className="flex items-center gap-4">
-          <a href="/dashboard" className="text-lg font-bold hover:opacity-80">
-            UniLLM
-          </a>
-          <a
-            href="/models"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Models
-          </a>
-          <span className="text-sm text-[var(--muted)]">Playground</span>
-        </div>
-      </header>
+      <SiteHeader activeNav="playground" />
 
       <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-6 gap-4">
-        {/* Config bar */}
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-xs text-[var(--muted)] mb-1">
-              API Key
+              {t.playground.apiKey}
             </label>
             <input
               type="password"
@@ -186,12 +171,12 @@ export default function PlaygroundPage() {
                 background: "var(--card)",
                 border: "1px solid var(--border)",
               }}
-              placeholder="Paste your API key (sk-...)"
+              placeholder={t.playground.apiKeyPlaceholder}
             />
           </div>
           <div className="min-w-[200px]">
             <label className="block text-xs text-[var(--muted)] mb-1">
-              Model
+              {t.playground.model}
             </label>
             <select
               value={model}
@@ -225,14 +210,13 @@ export default function PlaygroundPage() {
               border: "1px solid var(--border)",
             }}
           >
-            Clear
+            {t.playground.clear}
           </button>
         </div>
 
-        {/* System prompt */}
         <div>
           <label className="block text-xs text-[var(--muted)] mb-1">
-            System Prompt
+            {t.playground.systemPrompt}
           </label>
           <input
             value={systemPrompt}
@@ -242,11 +226,10 @@ export default function PlaygroundPage() {
               background: "var(--card)",
               border: "1px solid var(--border)",
             }}
-            placeholder="System prompt..."
+            placeholder={t.playground.systemPromptPlaceholder}
           />
         </div>
 
-        {/* Messages */}
         <div
           ref={outputRef}
           className="flex-1 min-h-[300px] max-h-[500px] overflow-y-auto rounded-xl p-4 space-y-4"
@@ -257,7 +240,7 @@ export default function PlaygroundPage() {
         >
           {messages.length === 0 && !streamText && (
             <p className="text-sm text-[var(--muted)] text-center mt-8">
-              Send a message to get started
+              {t.playground.emptyHint}
             </p>
           )}
           {messages.map((m, i) => (
@@ -269,7 +252,9 @@ export default function PlaygroundPage() {
                     m.role === "user" ? "var(--primary)" : "var(--success)",
                 }}
               >
-                {m.role === "user" ? "You" : "Assistant"}
+                {m.role === "user"
+                  ? t.playground.roleYou
+                  : t.playground.roleAssistant}
               </div>
               <div className="text-sm whitespace-pre-wrap">{m.content}</div>
             </div>
@@ -280,17 +265,18 @@ export default function PlaygroundPage() {
                 className="text-xs font-medium mb-1"
                 style={{ color: "var(--success)" }}
               >
-                Assistant
+                {t.playground.roleAssistant}
               </div>
               <div className="text-sm whitespace-pre-wrap">{streamText}</div>
             </div>
           )}
           {streaming && !streamText && (
-            <div className="text-sm text-[var(--muted)]">Thinking...</div>
+            <div className="text-sm text-[var(--muted)]">
+              {t.playground.thinking}
+            </div>
           )}
         </div>
 
-        {/* Input */}
         <div className="flex gap-2">
           <input
             value={input}
@@ -303,8 +289,8 @@ export default function PlaygroundPage() {
             }}
             placeholder={
               apiKey
-                ? "Type a message..."
-                : "Select an API key first"
+                ? t.playground.messagePlaceholder
+                : t.playground.needApiKey
             }
             disabled={!apiKey || streaming}
             className="flex-1 px-4 py-3 rounded-lg text-sm outline-none"
@@ -324,7 +310,7 @@ export default function PlaygroundPage() {
                   : "var(--primary)",
             }}
           >
-            Send
+            {t.playground.send}
           </button>
         </div>
       </div>

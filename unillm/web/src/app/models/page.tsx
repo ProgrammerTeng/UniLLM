@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { isLoggedIn, logout, getModelCatalog } from "@/lib/api";
+import { getModelCatalog } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
+import { SiteHeader } from "@/components/SiteHeader";
 
 interface ModelInfo {
   id: string;
@@ -34,7 +35,7 @@ function getVendorColor(vendor: string): string {
 }
 
 export default function ModelsPage() {
-  const router = useRouter();
+  const { t } = useI18n();
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -67,79 +68,25 @@ export default function ModelsPage() {
     return true;
   });
 
+  const subtitle = t.models.subtitle
+    .replace("{count}", String(models.length))
+    .replace("{vendors}", String(vendors.length));
+
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <header
-        className="border-b px-6 py-3 flex items-center justify-between"
-        style={{ borderColor: "var(--border)" }}
-      >
-        <div className="flex items-center gap-4">
-          <a href="/dashboard" className="text-lg font-bold hover:opacity-80 transition-opacity">
-            UniLLM
-          </a>
-          <a
-            href="/models"
-            className="text-sm text-white font-medium"
-          >
-            Models
-          </a>
-          <a
-            href="/playground"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Playground
-          </a>
-          <a
-            href="/docs"
-            className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-          >
-            Docs
-          </a>
-        </div>
-        <div className="flex items-center gap-4">
-          {isLoggedIn() ? (
-            <>
-              <a
-                href="/dashboard"
-                className="text-sm text-[var(--muted)] hover:text-white transition-colors"
-              >
-                Dashboard
-              </a>
-              <button
-                onClick={logout}
-                className="text-sm text-[var(--muted)] hover:text-white"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <a
-              href="/login"
-              className="text-sm px-4 py-1.5 rounded-lg font-medium"
-              style={{ background: "var(--primary)", color: "#fff" }}
-            >
-              Sign In
-            </a>
-          )}
-        </div>
-      </header>
+      <SiteHeader activeNav="models" />
 
       <div className="max-w-6xl mx-auto p-6">
-        {/* Title + Stats */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-1">Model Marketplace</h2>
-          <p className="text-[var(--muted)] text-sm">
-            {models.length} models available across {vendors.length} vendors.
-            All accessible via a single OpenAI-compatible API.
-          </p>
+          <h2 className="text-2xl font-bold mb-1">{t.models.title}</h2>
+          <p className="text-[var(--muted)] text-sm">{subtitle}</p>
         </div>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-6">
           <input
             type="text"
-            placeholder="Search models..."
+            placeholder={t.models.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="px-3 py-2 rounded-lg text-sm flex-1 min-w-[200px] outline-none"
@@ -159,7 +106,7 @@ export default function ModelsPage() {
               color: "var(--foreground)",
             }}
           >
-            <option value="all">All Vendors</option>
+            <option value="all">{t.models.allVendors}</option>
             {vendors.map((v) => (
               <option key={v} value={v}>
                 {v}
@@ -176,19 +123,21 @@ export default function ModelsPage() {
               color: "var(--foreground)",
             }}
           >
-            <option value="all">All Capabilities</option>
-            <option value="vision">Vision</option>
-            <option value="tools">Function Calling</option>
-            <option value="stream">Streaming</option>
+            <option value="all">{t.models.allCapabilities}</option>
+            <option value="vision">{t.models.vision}</option>
+            <option value="tools">{t.models.tools}</option>
+            <option value="stream">{t.models.streaming}</option>
           </select>
         </div>
 
         {/* Model Cards Grid */}
         {loading ? (
-          <div className="text-center py-20 text-[var(--muted)]">Loading models...</div>
+          <div className="text-center py-20 text-[var(--muted)]">
+            {t.models.loading}
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-[var(--muted)]">
-            No models match your filters.
+            {t.models.noResults}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -224,21 +173,27 @@ export default function ModelsPage() {
                   {/* Pricing */}
                   <div className="flex gap-4 text-sm">
                     <div>
-                      <div className="text-[var(--muted)] text-xs mb-0.5">Input</div>
+                      <div className="text-[var(--muted)] text-xs mb-0.5">
+                        {t.models.input}
+                      </div>
                       <div className="font-mono">
                         ${m.input_price_per_1m.toFixed(2)}
                         <span className="text-[var(--muted)] text-xs"> /1M</span>
                       </div>
                     </div>
                     <div>
-                      <div className="text-[var(--muted)] text-xs mb-0.5">Output</div>
+                      <div className="text-[var(--muted)] text-xs mb-0.5">
+                        {t.models.output}
+                      </div>
                       <div className="font-mono">
                         ${m.output_price_per_1m.toFixed(2)}
                         <span className="text-[var(--muted)] text-xs"> /1M</span>
                       </div>
                     </div>
                     <div>
-                      <div className="text-[var(--muted)] text-xs mb-0.5">Max Tokens</div>
+                      <div className="text-[var(--muted)] text-xs mb-0.5">
+                        {t.models.maxTokens}
+                      </div>
                       <div className="font-mono">
                         {m.max_tokens >= 1000
                           ? `${(m.max_tokens / 1000).toFixed(0)}K`
@@ -258,7 +213,7 @@ export default function ModelsPage() {
                           border: "1px solid var(--success)30",
                         }}
                       >
-                        Streaming
+                        {t.models.streaming}
                       </span>
                     )}
                     {m.supports_tools && (
@@ -270,7 +225,7 @@ export default function ModelsPage() {
                           border: "1px solid var(--primary)30",
                         }}
                       >
-                        Function Calling
+                        {t.models.tools}
                       </span>
                     )}
                     {m.supports_vision && (
@@ -282,7 +237,7 @@ export default function ModelsPage() {
                           border: "1px solid var(--warning)30",
                         }}
                       >
-                        Vision
+                        {t.models.vision}
                       </span>
                     )}
                   </div>
@@ -300,7 +255,7 @@ export default function ModelsPage() {
             border: "1px solid var(--border)",
           }}
         >
-          <h3 className="text-sm font-semibold mb-3">Quick Start</h3>
+          <h3 className="text-sm font-semibold mb-3">{t.models.quickStart}</h3>
           <pre
             className="text-xs overflow-x-auto p-4 rounded-lg"
             style={{ background: "var(--background)" }}

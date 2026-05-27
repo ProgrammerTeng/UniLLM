@@ -13,35 +13,42 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
+	apiadmin "github.com/unillm/unillm/api/admin"
+	apidashboard "github.com/unillm/unillm/api/dashboard"
+	apimiddleware "github.com/unillm/unillm/api/middleware"
+	apiv1 "github.com/unillm/unillm/api/v1"
+	corebilling "github.com/unillm/unillm/core/billing"
+	corecatalog "github.com/unillm/unillm/core/catalog"
+	coreinference "github.com/unillm/unillm/core/inference"
+	infrabilling "github.com/unillm/unillm/infra/billing"
+	infracatalog "github.com/unillm/unillm/infra/catalog"
+	infracrypto "github.com/unillm/unillm/infra/crypto"
+	infraInference "github.com/unillm/unillm/infra/inference"
+	infrajwt "github.com/unillm/unillm/infra/jwt"
+	"github.com/unillm/unillm/infra/persistence"
+	"github.com/unillm/unillm/infra/provider"
 	"github.com/unillm/unillm/internal/config"
-	"github.com/unillm/unillm/internal/handler"
 	"github.com/unillm/unillm/internal/logger"
-	"github.com/unillm/unillm/internal/middleware"
-	"github.com/unillm/unillm/internal/provider"
-	"github.com/unillm/unillm/internal/repository"
 	"github.com/unillm/unillm/internal/service"
 )
 
 func main() {
 	cfg := config.Load()
 
-	// Initialize structured logging
 	logger.Init(cfg.Environment)
 
 	if cfg.Environment == "prod" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Database
-	db, err := repository.NewDB(cfg.DatabaseURL)
+	db, err := persistence.NewDB(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect database")
 	}
-	if err := repository.AutoMigrate(db); err != nil {
+	if err := persistence.AutoMigrate(db); err != nil {
 		log.Fatal().Err(err).Msg("failed to migrate database")
 	}
 
-	// Redis
 	opt, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to parse redis url")
@@ -51,56 +58,56 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to connect redis")
 	}
 
-	// Repositories
-	userRepo := repository.NewUserRepo(db)
-	keyRepo := repository.NewAPIKeyRepo(db)
-	providerRepo := repository.NewProviderRepo(db)
+	userRepo := persistence.NewUserRepo(db)
+	keyRepo := persistence.NewAPIKeyRepo(db)
+	providerRepo := persistence.NewProviderRepo(db)
+	usageRepo := persistence.NewUsageRepo(db)
 
-	// Services
-	authSvc := service.NewAuthService(userRepo, keyRepo, cfg.JWTSecret, cfg.BcryptCost)
-	billingSvc := service.NewBillingService(rdb, db)
+	keyProtector := infracrypto.NewKeyProtector(cfg.EncryptionKey)
 
-	// Start billing flush worker (Redis → PG every 5 seconds)
+	billingStore := infrabilling.NewStore(rdb, db)
+	billingSvc := corebilling.NewService(billingStore)
+
+	catalogRepo := infracatalog.NewRepository(providerRepo, keyProtector)
+	catalogSvc := corecatalog.NewService(catalogRepo)
+
 	flushCtx, flushCancel := context.WithCancel(context.Background())
 	go billingSvc.FlushWorker(flushCtx, 5*time.Second)
 
-	// Provider registry with resilience (retry + circuit breaker)
 	registry := provider.NewRegistry()
-	registerProviders(registry, providerRepo)
+	provider.RegisterAll(registry, providerRepo)
 
-	// Handlers
-	authHandler := handler.NewAuthHandler(authSvc)
-	modelsHandler := handler.NewModelsHandler(providerRepo, db)
-	proxyHandler := handler.NewProxyHandler(registry, providerRepo, billingSvc)
-	embeddingHandler := handler.NewEmbeddingHandler(providerRepo, billingSvc)
-	usageHandler := handler.NewUsageHandler(db, billingSvc)
-	adminHandler := handler.NewAdminHandler(db, providerRepo, userRepo)
-	statusHandler := handler.NewStatusHandler(registry, providerRepo)
-
-	// Wire status handler to proxy for active probing
-	statusHandler.SetProxyHandler(proxyHandler)
-
-	// Start background health checks (every 60 seconds)
-	statusHandler.StartHealthChecks(60 * time.Second)
-
-	// Load upstream API keys
-	if err := proxyHandler.LoadProviderKeys(providerRepo); err != nil {
+	if err := catalogSvc.Reload(context.Background()); err != nil {
 		log.Warn().Err(err).Msg("failed to load provider keys")
 	}
-	if err := embeddingHandler.LoadProviderKeys(providerRepo); err != nil {
-		log.Warn().Err(err).Msg("failed to load embedding provider keys")
-	}
 
-	// Rate limiter: 200 requests per minute per user
-	limiter := middleware.NewRateLimiter(200, time.Minute)
+	inferenceSvc := coreinference.NewService(
+		&infraInference.CatalogRoutes{Catalog: catalogSvc},
+		&infraInference.ProviderRegistry{Registry: registry},
+		&infraInference.BillingRecorder{Billing: billingSvc},
+		&infraInference.MetricsAdapter{Record: apimiddleware.RecordProxy},
+		infraInference.NewHTTPEmbeddingForwarder(30*time.Second),
+	)
 
-	// Router (use New instead of Default to avoid double logging)
+	jwtIssuer := infrajwt.NewIssuer(cfg.JWTSecret)
+	authSvc := service.NewAuthService(userRepo, keyRepo, jwtIssuer, cfg.BcryptCost)
+
+	authHandler := apidashboard.NewAuthHandler(authSvc)
+	modelsHandler := apiv1.NewModelsHandler(providerRepo)
+	proxyHandler := apiv1.NewProxyHandler(inferenceSvc)
+	embeddingHandler := apiv1.NewEmbeddingHandler(inferenceSvc)
+	usageHandler := apidashboard.NewUsageHandler(usageRepo, userRepo, billingSvc)
+	adminHandler := apiadmin.NewHandler(providerRepo, userRepo, usageRepo, catalogSvc, keyProtector)
+	statusHandler := apiv1.NewStatusHandler(registry, catalogSvc)
+
+	statusHandler.StartHealthChecks(60 * time.Second)
+
+	limiter := apimiddleware.NewRedisRateLimiter(rdb, 200, time.Minute)
+
 	r := gin.New()
 	r.Use(gin.Recovery())
-
-	// Global middleware
-	r.Use(middleware.RequestID())
-	r.Use(middleware.Metrics())
+	r.Use(apimiddleware.RequestID())
+	r.Use(apimiddleware.Metrics())
 	r.Use(logger.GinLogger())
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.CORSOrigins,
@@ -111,30 +118,24 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Request body size limit
 	r.Use(func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, cfg.MaxBodyBytes)
 		c.Next()
 	})
 
-	// Health & status (public, no auth)
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "time": time.Now().UTC(), "env": cfg.Environment})
 	})
 	r.GET("/status", statusHandler.Status)
 	r.GET("/status/history", statusHandler.StatusHistory)
-
-	// Prometheus metrics
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	// Public routes (no auth)
 	r.POST("/api/auth/register", authHandler.Register)
 	r.POST("/api/auth/login", authHandler.Login)
 	r.GET("/api/models/catalog", modelsHandler.ModelCatalog)
 
-	// Dashboard API (JWT auth)
 	dashboard := r.Group("/api")
-	dashboard.Use(middleware.JWTAuth(cfg.JWTSecret))
+	dashboard.Use(apimiddleware.JWTAuth(jwtIssuer))
 	{
 		dashboard.GET("/me", authHandler.Me)
 		dashboard.POST("/keys", authHandler.CreateAPIKey)
@@ -147,30 +148,28 @@ func main() {
 		dashboard.GET("/usage/recent", usageHandler.Recent)
 	}
 
-	// OpenAI-compatible proxy (API key auth + balance check)
 	v1 := r.Group("/v1")
-	v1.Use(middleware.APIKeyAuth(authSvc.ResolveAPIKey))
-	v1.Use(middleware.RateLimit(limiter))
+	v1.Use(apimiddleware.APIKeyAuth(authSvc.ResolveAPIKey))
+	v1.Use(apimiddleware.RedisRateLimit(limiter))
 	{
 		v1.GET("/models", modelsHandler.ListModels)
 		v1.POST("/chat/completions",
-			middleware.BalanceCheck(func(ctx context.Context, userID int64) (bool, error) {
+			apimiddleware.BalanceCheck(func(ctx context.Context, userID int64) (bool, error) {
 				return billingSvc.CheckBalance(ctx, userID, 0)
 			}),
 			proxyHandler.ChatCompletion,
 		)
 		v1.POST("/embeddings",
-			middleware.BalanceCheck(func(ctx context.Context, userID int64) (bool, error) {
+			apimiddleware.BalanceCheck(func(ctx context.Context, userID int64) (bool, error) {
 				return billingSvc.CheckBalance(ctx, userID, 0)
 			}),
 			embeddingHandler.CreateEmbedding,
 		)
 	}
 
-	// Admin API (JWT auth + admin role)
 	admin := r.Group("/api/admin")
-	admin.Use(middleware.JWTAuth(cfg.JWTSecret))
-	admin.Use(middleware.AdminOnly())
+	admin.Use(apimiddleware.JWTAuth(jwtIssuer))
+	admin.Use(apimiddleware.AdminOnly())
 	{
 		admin.GET("/stats", adminHandler.GlobalStats)
 		admin.GET("/users", adminHandler.ListUsers)
@@ -185,7 +184,6 @@ func main() {
 		admin.POST("/provider-keys", adminHandler.AddProviderKey)
 	}
 
-	// Graceful shutdown
 	srv := &http.Server{
 		Addr:    ":" + cfg.Port,
 		Handler: r,
@@ -216,29 +214,4 @@ func main() {
 	billingSvc.FlushAll(context.Background())
 
 	log.Info().Msg("server stopped")
-}
-
-func registerProviders(registry *provider.Registry, providerRepo *repository.ProviderRepo) {
-	providers, err := providerRepo.ListActive()
-	if err != nil {
-		log.Warn().Err(err).Msg("failed to load providers")
-		return
-	}
-	for _, p := range providers {
-		var inner provider.Provider
-		switch p.Name {
-		case "openai", "deepseek", "alibaba", "bytedance", "geneasy":
-			inner = provider.NewOpenAIProvider(p.Name, p.BaseURL)
-		case "anthropic":
-			inner = provider.NewAnthropicProvider(p.BaseURL)
-		case "google":
-			inner = provider.NewGoogleProvider(p.BaseURL)
-		default:
-			log.Warn().Str("provider", p.Name).Msg("unknown provider")
-			continue
-		}
-		// Wrap with retry + circuit breaker
-		registry.Register(provider.NewResilientProvider(inner))
-		log.Info().Str("provider", p.Name).Str("url", p.BaseURL).Msg("registered provider")
-	}
 }

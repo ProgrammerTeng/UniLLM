@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n";
+
 interface LogEntry {
   id: number;
   model_name: string;
@@ -14,9 +16,11 @@ interface LogEntry {
 }
 
 export default function RecentLogs({ logs }: { logs: LogEntry[] }) {
+  const { t } = useI18n();
+
   if (logs.length === 0) {
     return (
-      <p className="text-sm text-[var(--muted)]">No requests yet</p>
+      <p className="text-sm text-[var(--muted)]">{t.logs.noRequests}</p>
     );
   }
 
@@ -25,12 +29,12 @@ export default function RecentLogs({ logs }: { logs: LogEntry[] }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-[var(--muted)]">
-            <th className="pb-3">Time</th>
-            <th className="pb-3">Model</th>
-            <th className="pb-3 text-right">Tokens</th>
-            <th className="pb-3 text-right">Cost</th>
-            <th className="pb-3 text-right">Latency</th>
-            <th className="pb-3 text-right">Status</th>
+            <th className="pb-3">{t.logs.colTime}</th>
+            <th className="pb-3">{t.logs.colModel}</th>
+            <th className="pb-3 text-right">{t.logs.colTokens}</th>
+            <th className="pb-3 text-right">{t.logs.colCost}</th>
+            <th className="pb-3 text-right">{t.logs.colLatency}</th>
+            <th className="pb-3 text-right">{t.logs.colStatus}</th>
           </tr>
         </thead>
         <tbody>
@@ -40,31 +44,21 @@ export default function RecentLogs({ logs }: { logs: LogEntry[] }) {
               className="border-t"
               style={{ borderColor: "var(--border)" }}
             >
-              <td className="py-2.5 text-[var(--muted)] text-xs">
-                {formatTime(log.created_at)}
+              <td className="py-2.5 text-[var(--muted)] text-xs whitespace-nowrap">
+                {new Date(log.created_at).toLocaleString()}
               </td>
               <td className="py-2.5 font-mono text-xs">{log.model_name}</td>
-              <td className="py-2.5 text-right text-xs">
-                {log.total_tokens.toLocaleString()}
-              </td>
-              <td className="py-2.5 text-right text-xs">
+              <td className="py-2.5 text-right">{log.total_tokens}</td>
+              <td className="py-2.5 text-right font-mono">
                 ${log.cost.toFixed(6)}
               </td>
-              <td className="py-2.5 text-right text-xs">
-                {(log.latency_ms / 1000).toFixed(2)}s
-              </td>
+              <td className="py-2.5 text-right">{log.latency_ms}ms</td>
               <td className="py-2.5 text-right">
                 <span
                   className="text-xs px-1.5 py-0.5 rounded"
                   style={{
-                    background:
-                      log.status === "success"
-                        ? "rgba(34,197,94,0.15)"
-                        : "rgba(239,68,68,0.15)",
                     color:
-                      log.status === "success"
-                        ? "var(--success)"
-                        : "var(--danger)",
+                      log.status === "ok" ? "var(--success)" : "var(--danger)",
                   }}
                 >
                   {log.status}
@@ -76,14 +70,4 @@ export default function RecentLogs({ logs }: { logs: LogEntry[] }) {
       </table>
     </div>
   );
-}
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
